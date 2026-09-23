@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Wira Suci: Misi Menyucikan Najis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Quicksand:wght@500;700&display=swap');
+        
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            font-family: 'Quicksand', sans-serif;
+        }
+        
+        .font-game {
+            font-family: 'Fredoka One', cursive;
+        }
+
+        /* RPG Card Frame Styling */
+        .rpg-card {
+            background: linear-gradient(180deg, #3a2312 0%, #1c1007 100%);
+            border: 4px solid #d4af37;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5), inset 0 0 15px rgba(212, 175, 55, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+        }
+
+        .rpg-card:hover, .rpg-card:active {
+            transform: translateY(-5px) scale(1.02);
+            border-color: #fff0a8;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.7), 0 0 20px rgba(56, 189, 248, 0.8);
+        }
+
+        /* Floating Island Sky Background Gradient */
+        .sky-bg {
+            background: linear-gradient(180deg, #38bdf8 0%, #818cf8 60%, #c084fc 100%);
+        }
+
+        /* Modal Bounce in */
+        @keyframes modal-bounce {
+            0% { transform: scale(0.7); opacity: 0; }
+            80% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .animate-modal {
+            animation: modal-bounce 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-white h-screen w-screen overflow-hidden select-none">
+
+    <div id="game-container" class="relative w-full h-full sky-bg flex flex-col justify-between overflow-hidden">
+        
+        <!-- Canvas Layer for Monsters, Hero & Projectiles -->
+        <canvas id="gameCanvas" class="absolute inset-0 w-full h-full z-0 cursor-crosshair"></canvas>
+
+        <!-- UI Header (HUD) -->
+        <header class="relative z-10 p-3 sm:p-4 flex justify-between items-center bg-slate-900/40 backdrop-blur-md border-b border-white/20">
+            <!-- Left: Title & Question Counter -->
+            <div class="flex items-center gap-3 sm:gap-4">
+                <div class="bg-amber-700/80 border-2 border-amber-400 px-3 py-1.5 rounded-2xl shadow-lg flex items-center gap-2">
+                    <i class="fa-solid fa-shield-halved text-cyan-300 text-xl sm:text-2xl"></i>
+                    <div>
+                        <h1 class="font-game text-xs sm:text-sm text-amber-200 leading-tight">WIRA SUCI</h1>
+                        <p class="text-[10px] sm:text-xs text-amber-100/80 hidden sm:block">Menyucikan Najis</p>
+                    </div>
+                </div>
+
+                <!-- Questions Counter (Replaced Monster Kills Counter) -->
+                <div class="bg-slate-800/80 border border-slate-600 px-3 py-1.5 rounded-xl flex items-center gap-2">
+                    <i class="fa-solid fa-graduation-cap text-cyan-400 text-lg sm:text-xl"></i>
+                    <div>
+                        <span class="text-[10px] text-slate-400 block leading-none">SOALAN</span>
+                        <span id="score-text" class="font-game text-lg sm:text-xl text-yellow-300">0 / 15</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Hearts (Lives) -->
+            <div class="flex items-center gap-1.5 sm:gap-2 bg-slate-800/80 border border-slate-600 px-3 py-2 rounded-xl">
+                <span class="text-xs text-slate-300 mr-1 font-bold hidden sm:inline">NYAWA:</span>
+                <div id="lives-container" class="flex gap-1 sm:gap-1.5">
+                    <!-- Hearts dynamically created -->
+                </div>
+            </div>
+        </header>
+
+        <!-- START SCREEN OVERLAY -->
+        <div id="start-overlay" class="absolute inset-0 z-30 bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center p-4">
+            <div class="max-w-xl w-full bg-slate-900/90 border-4 border-amber-500/80 rounded-3xl p-6 sm:p-8 text-center shadow-2xl relative overflow-hidden">
+                <div class="inline-block bg-amber-500/20 text-amber-300 border border-amber-500/40 px-4 py-1 rounded-full text-xs font-bold mb-3">
+                    MISI PENDIDIKAN ISLAM
+                </div>
+                
+                <h2 class="font-game text-3xl sm:text-5xl text-amber-300 mb-2 drop-shadow-md">WIRA SUCI</h2>
+                <h3 class="font-game text-xl sm:text-2xl text-cyan-300 mb-4">MISI MENYUCIKAN NAJIS</h3>
+                
+                <p class="text-slate-300 text-sm sm:text-base mb-6 leading-relaxed">
+                    Bantu Wira Suci mempertahankan kawasan suci! Tembak air pada monster najis yang menghampiri dan jawab soalan situasi najis dengan tepat.
+                </p>
+
+                <!-- Instructions Box -->
+                <div class="grid grid-cols-3 gap-2 sm:gap-3 mb-6 text-left">
+                    <div class="bg-slate-800/80 border border-purple-500/40 p-2.5 rounded-xl text-center">
+                        <div class="w-8 h-8 rounded-full bg-purple-600/40 border border-purple-400 mx-auto flex items-center justify-center mb-1 text-xs font-bold">1 Tap</div>
+                        <p class="font-bold text-xs text-purple-200">Mukhaffafah</p>
+                        <p class="text-[10px] text-slate-400">(Ringan)</p>
+                    </div>
+                    <div class="bg-slate-800/80 border border-emerald-500/40 p-2.5 rounded-xl text-center">
+                        <div class="w-8 h-8 rounded-full bg-emerald-600/40 border border-emerald-400 mx-auto flex items-center justify-center mb-1 text-xs font-bold">2 Taps</div>
+                        <p class="font-bold text-xs text-emerald-200">Mutawassitah</p>
+                        <p class="text-[10px] text-slate-400">(Pertengahan)</p>
+                    </div>
+                    <div class="bg-slate-800/80 border border-rose-500/40 p-2.5 rounded-xl text-center">
+                        <div class="w-8 h-8 rounded-full bg-rose-600/40 border border-rose-400 mx-auto flex items-center justify-center mb-1 text-xs font-bold">3 Taps</div>
+                        <p class="font-bold text-xs text-rose-200">Mughallazah</p>
+                        <p class="text-[10px] text-slate-400">(Berat)</p>
+                    </div>
+                </div>
+
+                <button id="start-btn" class="w-full py-4 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-game text-xl sm:text-2xl rounded-2xl shadow-lg border-2 border-amber-200 transition active:scale-95 flex items-center justify-center gap-3">
+                    <i class="fa-solid fa-play"></i> MULA MAIN
+                </button>
+            </div>
+        </div>
+
+        <!-- QUIZ MODAL CONTAINER -->
+        <div id="quiz-modal" class="hidden absolute inset-0 z-40 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-6">
+            <div class="animate-modal max-w-4xl w-full bg-slate-900/95 border-4 border-amber-500/70 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col max-h-[95vh] justify-between">
+                
+                <!-- Modal Top Header -->
+                <div class="text-center mb-3">
+                    <div class="inline-flex items-center gap-2 bg-amber-500/20 border border-amber-400/40 px-3 py-1 rounded-full text-amber-300 text-xs font-bold mb-1">
+                        <i class="fa-solid fa-graduation-cap"></i>
+                        <span>SOALAN SITUASI NAJIS (<span id="quiz-num">1</span> / 15)</span>
+                    </div>
+                    <h3 id="quiz-question" class="text-base sm:text-xl font-bold text-white bg-slate-800/80 p-3 sm:p-4 rounded-2xl border border-slate-700 shadow-inner mt-1">
+                        Sedang memuatkan soalan...
+                    </h3>
+                </div>
+
+                <!-- Feedback Banner -->
+                <div id="quiz-feedback" class="hidden my-2 p-3 rounded-xl text-center text-sm font-bold border"></div>
+
+                <!-- 3 CARDS SELECTION (Mukhaffafah, Mutawassitah, Mughallazah - Shuffled dynamically) -->
+                <div id="cards-container" class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 my-2 overflow-y-auto max-h-[55vh] p-1">
+                    <!-- Cards are dynamically generated and shuffled via JavaScript -->
+                </div>
+
+                <p class="text-center text-xs text-amber-200/70 font-semibold mt-1">Pilih Kad Jenis Najis yang Tepat untuk Menyucikan Situasi Ini!</p>
+            </div>
+        </div>
+
+        <!-- GAME OVER / VICTORY OVERLAY -->
+        <div id="end-overlay" class="hidden absolute inset-0 z-50 bg-slate-950/90 backdrop-blur-lg flex flex-col items-center justify-center p-4">
+            <div class="max-w-md w-full bg-slate-900 border-4 border-amber-500 rounded-3xl p-6 sm:p-8 text-center shadow-2xl">
+                <div id="end-icon" class="text-6xl mb-3">🏆</div>
+                <h2 id="end-title" class="font-game text-3xl sm:text-4xl text-amber-300 mb-2">TAHNIAH!</h2>
+                <p id="end-message" class="text-slate-300 text-sm sm:text-base mb-6">
+                    Anda telah berjaya menyucikan semua najis dan menyelamatkan pulau ini!
+                </p>
+                <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 mb-6">
+                    <p class="text-xs text-slate-400 uppercase tracking-widest font-bold">Jawapan Betul</p>
+                    <p id="end-score" class="font-game text-3xl text-cyan-300">0 / 15</p>
+                </div>
+                <button onclick="resetGame()" class="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-game text-xl rounded-2xl shadow-lg border-2 border-emerald-200 transition active:scale-95">
+                    <i class="fa-solid fa-rotate-right mr-2"></i> MAIN SEMULA
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- AUDIO SYNTHESIS ---
+        class SoundEffects {
+            constructor() {
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+
+            playShoot() {
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(150, this.ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.15);
+            }
+
+            playHit() {
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(120, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.1);
+            }
+
+            playCorrect() {
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, now);
+                osc.frequency.setValueAtTime(659.25, now + 0.1);
+                osc.frequency.setValueAtTime(783.99, now + 0.2);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(now + 0.4);
+            }
+
+            playWrong() {
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(220, now);
+                osc.frequency.setValueAtTime(160, now + 0.15);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(now + 0.3);
+            }
+        }
+
+        const audio = new SoundEffects();
+
+        // 15 SITUATION QUESTIONS
+        const INITIAL_SITUATION_QUESTIONS = [
+            { id: 1, text: "Bayi lelaki berumur 6 bulan yang hanya minum susu ibu telah terkencing di atas karpet.", answer: 1, exp: "Najis Mukhaffafah: renjis air mutlak ke tempat najis." },
+            { id: 2, text: "Air kencing kanak-kanak lelaki berumur 1 tahun 8 bulan yang belum makan makanan selain susu ibu.", answer: 1, exp: "Najis Mukhaffafah: renjis air mutlak ke tempat najis." },
+            { id: 3, text: "Pakaian terkena percikan air kencing kucing di rumah.", answer: 2, exp: "Najis Mutawassitah: Perlu dibasuh dengan air mutlak hingga hilang bau, warna, dan rasa." },
+            { id: 4, text: "Lantai rumah terkena darah ayam yang disembelih.", answer: 2, exp: "Najis Mutawassitah: Dibasuh dengan air mutlak hingga bersih dan hilang sifat najis (bau, warna, rasa)." },
+            { id: 5, text: "Danish mencuci seluarnya dengan menggunakan air mutlak sehingga hilang bau, warna dan rasa", answer: 2, hideDesc: true, exp: "Najis Mutawassitah: Dibasuh dengan air mutlak sehingga hilang bau, warna dan rasa." },
+            { id: 6, text: "Pinggan makan dijilat oleh seekor anjing liar.", answer: 3, exp: "Najis Mughallazah: Basuh 7 kali dengan air mutlak, 1 kali daripadanya air tanah." },
+            { id: 7, text: "Bekas makanan Maria dijilat oleh babi.", answer: 3, exp: "Najis Mughallazah: Wajib dibasuh 7 kali dengan air mutlak, salah satunya bercampur tanah." },
+            { id: 8, text: "Tangan tersentuh air kencing lembu di ladang.", answer: 2, exp: "Najis Mutawassitah: Dibasuh dengan air mutlak sehingga hilang rasa, warna, dan bau." },
+            { id: 9, text: "Terkena muntah bayi perempuan yang berumur 5 bulan.", answer: 2, exp: "Najis Mutawassitah: Dibasuh dengan air mutlak hingga bersih." },
+            { id: 10, text: "Pakaian terkena nanah daripada luka yang berdarah.", answer: 2, exp: "Najis Mutawassitah: Dibasuh bersih dengan air mutlak." },
+            { id: 11, text: "Saya terlanggar bangkai tikus di atas jalan.", answer: 2, exp: "Najis Mutawassitah: Dibasuh bersih menggunakan air mutlak." },
+            { id: 12, text: "Hani membasuh kasutnya dengan menggunakan air tanah 1 kali dan air mutlak sebanyak 6 kali", answer: 3, hideDesc: true, exp: "Najis Mughallazah: Dibasuh 7 kali (1 kali daripadanya air tanah)." },
+            { id: 13, text: "Ibu merenjiskan air mutlak ketempat yang terkena najis", answer: 1, hideDesc: true, exp: "Najis Mukhaffafah: Renjis air mutlak ke tempat najis." },
+            { id: 14, text: "Pakaian terkena air kencing bayi lelaki 3 bulan yang belum makan apa-apa selain susu ibu.", answer: 1, exp: "Najis Mukhaffafah: renjis air mutlak ke tempat najis." },
+            { id: 15, text: "Terkena air liur anjing pada seluar semasa bermain di taman.", answer: 3, exp: "Najis Mughallazah: Wajib dibasuh 7 kali air mutlak (1 kali air tanah) pada tempat terkena liur anjing." }
+        ];
+
+        // CARD TEMPLATES FOR SHUFFLING ANSWERS
+        const CARD_TEMPLATES = [
+            {
+                typeId: 1,
+                tapCount: '1',
+                title: 'Najis Mukhaffafah',
+                subTitle: '(Najis Ringan)',
+                desc: 'Cara Suci: renjis air mutlak ke tempat najis',
+                bgClass: 'bg-purple-900/50',
+                borderClass: 'border-purple-400/50',
+                svg: `<svg class="w-12 h-12 sm:w-20 sm:h-20 drop-shadow-md" viewBox="0 0 100 100">
+                        <path d="M20,75 C10,75 10,60 20,50 C15,35 30,20 50,25 C70,20 85,35 80,50 C90,60 90,75 80,75 C70,85 30,85 20,75 Z" fill="#9333ea" stroke="#c084fc" stroke-width="3"/>
+                        <circle cx="38" cy="48" r="5" fill="#ffffff"/>
+                        <circle cx="62" cy="48" r="5" fill="#ffffff"/>
+                        <circle cx="39" cy="49" r="2" fill="#000"/>
+                        <circle cx="63" cy="49" r="2" fill="#000"/>
+                        <path d="M40,62 Q50,56 60,62" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+                        <polygon points="30,25 22,10 38,18" fill="#7e22ce"/>
+                        <polygon points="70,25 78,10 62,18" fill="#7e22ce"/>
+                    </svg>`
+            },
+            {
+                typeId: 2,
+                tapCount: '2',
+                title: 'Najis Mutawassitah',
+                subTitle: '(Najis Pertengahan)',
+                desc: 'Cara Suci: Basuh dengan air mutlak hingga hilang bau, warna & rasa.',
+                bgClass: 'bg-emerald-900/50',
+                borderClass: 'border-emerald-400/50',
+                svg: `<svg class="w-12 h-12 sm:w-20 sm:h-20 drop-shadow-md" viewBox="0 0 100 100">
+                        <path d="M25,75 L15,55 L25,45 L15,30 L35,25 L45,10 L55,10 L65,25 L85,30 L75,45 L85,55 L75,75 L50,85 Z" fill="#059669" stroke="#34d399" stroke-width="3"/>
+                        <polygon points="35,45 42,38 48,45" fill="#ffffff"/>
+                        <polygon points="52,45 58,38 65,45" fill="#ffffff"/>
+                        <polygon points="36,46 41,40 47,46" fill="#000"/>
+                        <polygon points="53,46 58,40 64,46" fill="#000"/>
+                        <path d="M35,62 L40,55 L45,62 L50,55 L55,62 L60,55 L65,62" fill="none" stroke="#ffffff" stroke-width="3"/>
+                    </svg>`
+            },
+            {
+                typeId: 3,
+                tapCount: '3',
+                title: 'Najis Mughallazah',
+                subTitle: '(Najis Berat)',
+                desc: 'Cara Suci: Basuh 7 kali air (1 kali daripadanya air tanah).',
+                bgClass: 'bg-rose-900/50',
+                borderClass: 'border-rose-400/50',
+                svg: `<svg class="w-12 h-12 sm:w-20 sm:h-20 drop-shadow-md" viewBox="0 0 100 100">
+                        <path d="M20,80 L10,50 L25,35 L40,20 L60,20 L75,35 L90,50 L80,80 L50,90 Z" fill="#e11d48" stroke="#fb7185" stroke-width="3"/>
+                        <polygon points="20,20 30,35 15,35" fill="#f43f5e"/>
+                        <polygon points="80,20 70,35 85,35" fill="#f43f5e"/>
+                        <circle cx="35" cy="45" r="6" fill="#fef08a"/>
+                        <circle cx="65" cy="45" r="6" fill="#fef08a"/>
+                        <circle cx="35" cy="45" r="2" fill="#000"/>
+                        <circle cx="65" cy="45" r="2" fill="#000"/>
+                        <path d="M30,68 Q50,80 70,68 L65,60 Q50,70 35,60 Z" fill="#4c0519" stroke="#fb7185" stroke-width="2"/>
+                    </svg>`
+            }
+        ];
+
+        // GAME STATE
+        let canvas, ctx;
+        let lives = 5;
+        let questionsAnsweredCount = 0; // Tracks answered questions (0 to 15)
+        let correctAnswersCount = 0; // Tracks correctly answered questions
+        let monsterKillsCount = 0;
+        let currentQuestionIndex = 0;
+        let isGameRunning = false;
+        let isQuizActive = false;
+        let activeQuestions = [];
+        
+        let hero = { x: 0, y: 0, radius: 35 };
+        let monsters = [];
+        let projectiles = [];
+        let floatingIslands = [];
+        let particles = [];
+
+        let lastSpawnTime = 0;
+        let baseSpawnInterval = 2000;
+
+        // Utility: Fisher-Yates Shuffle
+        function shuffleArray(array) {
+            const arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        function initCanvas() {
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            canvas.addEventListener('pointerdown', handleCanvasClick);
+        }
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            hero.x = canvas.width / 2;
+            hero.y = canvas.height - 90;
+
+            generateIslands();
+        }
+
+        function generateIslands() {
+            floatingIslands = [
+                { x: canvas.width * 0.2, y: canvas.height * 0.25, rx: 70, ry: 25 },
+                { x: canvas.width * 0.8, y: canvas.height * 0.3, rx: 80, ry: 30 },
+                { x: canvas.width * 0.5, y: canvas.height * 0.15, rx: 100, ry: 35 },
+                { x: canvas.width * 0.5, y: canvas.height - 70, rx: 110, ry: 35 }
+            ];
+        }
+
+        function updateLivesUI() {
+            const container = document.getElementById('lives-container');
+            container.innerHTML = '';
+            for (let i = 0; i < 5; i++) {
+                const heart = document.createElement('i');
+                heart.className = `fa-solid fa-heart ${i < lives ? 'text-red-500 animate-pulse' : 'text-slate-600'} text-lg sm:text-xl`;
+                container.appendChild(heart);
+            }
+        }
+
+        function updateScoreUI() {
+            // Displays questions answered counter (e.g. 0 / 15)
+            document.getElementById('score-text').innerText = `${questionsAnsweredCount} / 15`;
+        }
+
+        function spawnMonster() {
+            if (!isGameRunning || isQuizActive) return;
+
+            // Difficulty scaling based on questions answered
+            const speedMultiplier = 1 + (questionsAnsweredCount * 0.12);
+            const rand = Math.random();
+            let type = 1, hp = 1, speed = (1.0 + Math.random() * 0.5) * speedMultiplier, radius = 25;
+
+            const largeChance = Math.min(0.5, questionsAnsweredCount * 0.035);
+            const medChance = Math.min(0.8, 0.3 + questionsAnsweredCount * 0.03);
+
+            if (rand < largeChance) {
+                type = 3; hp = 3; speed = (0.6 + Math.random() * 0.4) * speedMultiplier; radius = 42;
+            } else if (rand < medChance) {
+                type = 2; hp = 2; speed = (0.8 + Math.random() * 0.45) * speedMultiplier; radius = 33;
+            }
+
+            speed = Math.min(speed, 5.5);
+
+            const spawnX = Math.random() * (canvas.width - 120) + 60;
+            const spawnY = -50;
+
+            monsters.push({
+                x: spawnX,
+                y: spawnY,
+                type: type,
+                hp: hp,
+                maxHp: hp,
+                speed: speed,
+                radius: radius,
+                wobble: Math.random() * Math.PI * 2
+            });
+        }
+
+        function handleCanvasClick(e) {
+            if (!isGameRunning || isQuizActive) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+
+            let targetMonster = null;
+            for (let i = monsters.length - 1; i >= 0; i--) {
+                const m = monsters[i];
+                const dist = Math.hypot(clickX - m.x, clickY - m.y);
+                if (dist < m.radius + 15) {
+                    targetMonster = m;
+                    break;
+                }
+            }
+
+            const targetX = targetMonster ? targetMonster.x : clickX;
+            const targetY = targetMonster ? targetMonster.y : clickY;
+
+            const angle = Math.atan2(targetY - hero.y, targetX - hero.x);
+            projectiles.push({
+                x: hero.x,
+                y: hero.y - 30,
+                vx: Math.cos(angle) * 18,
+                vy: Math.sin(angle) * 18,
+                radius: 10
+            });
+
+            audio.playShoot();
+        }
+
+        function createSplashParticles(x, y, color) {
+            if (particles.length > 40) return;
+
+            const count = Math.min(6, 40 - particles.length);
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 4 + 2;
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    radius: Math.random() * 3 + 2,
+                    color: color || '#38bdf8',
+                    alpha: 1,
+                    life: 0.06 + Math.random() * 0.04
+                });
+            }
+        }
+
+        function drawHero() {
+            ctx.save();
+            ctx.translate(hero.x, hero.y);
+
+            ctx.fillStyle = '#65a30d';
+            ctx.beginPath();
+            ctx.ellipse(0, 25, 60, 20, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#78350f';
+            ctx.beginPath();
+            ctx.ellipse(0, 32, 50, 15, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#3b82f6';
+            ctx.beginPath();
+            ctx.arc(0, 0, 22, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#fde047';
+            ctx.beginPath();
+            ctx.arc(0, -18, 14, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#1e293b';
+            ctx.beginPath();
+            ctx.arc(-5, -20, 2.5, 0, Math.PI * 2);
+            ctx.arc(5, -20, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 4;
+            ctx.fillStyle = 'rgba(56, 189, 248, 0.4)';
+            ctx.beginPath();
+            ctx.arc(0, 2, 30, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(0, 2, 8, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function drawMonster(m) {
+            ctx.save();
+            ctx.translate(m.x, m.y);
+
+            const wobbleY = Math.sin(Date.now() * 0.005 + m.wobble) * 4;
+            ctx.translate(0, wobbleY);
+
+            if (m.type === 1) {
+                ctx.fillStyle = '#a855f7';
+                ctx.strokeStyle = '#c084fc';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(-8, -4, 4, 0, Math.PI * 2);
+                ctx.arc(8, -4, 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#581c87';
+                ctx.beginPath();
+                ctx.arc(-8, -4, 2, 0, Math.PI * 2);
+                ctx.arc(8, -4, 2, 0, Math.PI * 2);
+                ctx.fill();
+
+            } else if (m.type === 2) {
+                ctx.fillStyle = '#059669';
+                ctx.strokeStyle = '#34d399';
+                ctx.lineWidth = 3;
+
+                ctx.beginPath();
+                ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#10b981';
+                for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) {
+                    ctx.beginPath();
+                    ctx.arc(Math.cos(a) * m.radius, Math.sin(a) * m.radius, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                ctx.fillStyle = '#fef08a';
+                ctx.beginPath();
+                ctx.arc(-10, -5, 5, 0, Math.PI * 2);
+                ctx.arc(10, -5, 5, 0, Math.PI * 2);
+                ctx.fill();
+
+            } else {
+                ctx.fillStyle = '#e11d48';
+                ctx.strokeStyle = '#fb7185';
+                ctx.lineWidth = 4;
+
+                ctx.beginPath();
+                ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#fbbf24';
+                ctx.beginPath();
+                ctx.moveTo(-15, -m.radius);
+                ctx.lineTo(0, -m.radius - 15);
+                ctx.lineTo(15, -m.radius);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(-12, -8, 6, 0, Math.PI * 2);
+                ctx.arc(12, -8, 6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#991b1b';
+                ctx.beginPath();
+                ctx.arc(-12, -8, 3, 0, Math.PI * 2);
+                ctx.arc(12, -8, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            if (m.maxHp > 1) {
+                const barWidth = 36;
+                const barHeight = 6;
+                const hpPercent = m.hp / m.maxHp;
+
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
+                ctx.fillRect(-barWidth / 2, -m.radius - 16, barWidth, barHeight);
+
+                ctx.fillStyle = m.type === 2 ? '#34d399' : '#f43f5e';
+                ctx.fillRect(-barWidth / 2, -m.radius - 16, barWidth * hpPercent, barHeight);
+
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(-barWidth / 2, -m.radius - 16, barWidth, barHeight);
+            }
+
+            ctx.restore();
+        }
+
+        function updateGame() {
+            if (!isGameRunning || isQuizActive) return;
+
+            const now = Date.now();
+            const currentInterval = Math.max(700, baseSpawnInterval - (questionsAnsweredCount * 85));
+
+            if (now - lastSpawnTime > currentInterval) {
+                spawnMonster();
+                lastSpawnTime = now;
+            }
+
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const p = projectiles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+
+                let hit = false;
+                for (let j = monsters.length - 1; j >= 0; j--) {
+                    const m = monsters[j];
+                    const dist = Math.hypot(p.x - m.x, p.y - m.y);
+
+                    if (dist < p.radius + m.radius) {
+                        m.hp -= 1;
+                        audio.playHit();
+                        createSplashParticles(p.x, p.y, '#38bdf8');
+
+                        if (m.hp <= 0) {
+                            createSplashParticles(m.x, m.y, '#c084fc');
+                            monsters.splice(j, 1);
+                            monsterKillsCount++;
+
+                            if (monsterKillsCount % 4 === 0 && currentQuestionIndex < 15) {
+                                triggerQuizModal();
+                                break;
+                            }
+                        }
+                        hit = true;
+                        break;
+                    }
+                }
+
+                if (hit || p.x < 0 || p.x > canvas.width || p.y < 0 || p.y > canvas.height) {
+                    projectiles.splice(i, 1);
+                }
+            }
+
+            for (let i = monsters.length - 1; i >= 0; i--) {
+                const m = monsters[i];
+                const angle = Math.atan2(hero.y - m.y, hero.x - m.x);
+                m.x += Math.cos(angle) * m.speed;
+                m.y += Math.sin(angle) * m.speed;
+
+                const distToHero = Math.hypot(hero.x - m.x, hero.y - m.y);
+                if (distToHero < m.radius + hero.radius) {
+                    monsters.splice(i, 1);
+                    lives--;
+                    audio.playWrong();
+                    createSplashParticles(hero.x, hero.y, '#f43f5e');
+                    updateLivesUI();
+
+                    if (lives <= 0) {
+                        triggerGameOver();
+                    }
+                }
+            }
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const pt = particles[i];
+                pt.x += pt.vx;
+                pt.y += pt.vy;
+                pt.alpha -= pt.life;
+                if (pt.alpha <= 0) particles.splice(i, 1);
+            }
+        }
+
+        function drawGame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            floatingIslands.forEach(island => {
+                ctx.fillStyle = '#65a30d';
+                ctx.beginPath();
+                ctx.ellipse(island.x, island.y, island.rx, island.ry, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#78350f';
+                ctx.beginPath();
+                ctx.ellipse(island.x, island.y + 12, island.rx * 0.85, island.ry * 0.7, 0, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            particles.forEach(pt => {
+                ctx.save();
+                ctx.globalAlpha = pt.alpha;
+                ctx.fillStyle = pt.color;
+                ctx.beginPath();
+                ctx.arc(pt.x, pt.y, pt.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+
+            projectiles.forEach(p => {
+                ctx.fillStyle = '#38bdf8';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            monsters.forEach(m => drawMonster(m));
+            drawHero();
+        }
+
+        function gameLoop() {
+            updateGame();
+            drawGame();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function renderShuffledAnswerCards(hideDesc = false) {
+            const container = document.getElementById('cards-container');
+            container.innerHTML = '';
+
+            // Shuffle the 3 answer choices randomly
+            const shuffledCards = shuffleArray(CARD_TEMPLATES);
+
+            shuffledCards.forEach(card => {
+                const btn = document.createElement('button');
+                btn.className = 'rpg-card rounded-2xl p-3 flex sm:flex-col items-center sm:justify-between text-left sm:text-center group relative overflow-hidden';
+                btn.onclick = () => submitAnswer(card.typeId);
+
+                const descHTML = hideDesc ? '' : `<p class="text-[11px] text-slate-300 hidden sm:block">${card.desc}</p>`;
+
+                btn.innerHTML = `
+                    <div class="w-16 h-16 sm:w-28 sm:h-28 rounded-xl ${card.bgClass} border ${card.borderClass} flex items-center justify-center shrink-0 mr-3 sm:mr-0 sm:mb-2 relative">
+                        ${card.svg}
+                        <span class="absolute top-1 right-1 bg-cyan-500 text-[10px] font-bold px-1.5 py-0.5 rounded-full text-slate-950">${card.tapCount}</span>
+                    </div>
+                    <div class="flex-1">
+                        <div class="bg-amber-500/20 border border-amber-400/40 rounded-lg px-2 py-1 mb-1">
+                            <h4 class="font-game text-amber-300 text-sm sm:text-base leading-tight">${card.title}</h4>
+                            <span class="text-[11px] text-amber-200/80 font-bold block">${card.subTitle}</span>
+                        </div>
+                        ${descHTML}
+                    </div>
+                `;
+
+                container.appendChild(btn);
+            });
+        }
+
+        function triggerQuizModal() {
+            if (currentQuestionIndex >= activeQuestions.length) return;
+
+            isQuizActive = true;
+            const q = activeQuestions[currentQuestionIndex];
+
+            document.getElementById('quiz-num').innerText = currentQuestionIndex + 1;
+            document.getElementById('quiz-question').innerText = `"${q.text}"`;
+
+            const feedbackEl = document.getElementById('quiz-feedback');
+            feedbackEl.className = 'hidden my-2 p-3 rounded-xl text-center text-sm font-bold border';
+            feedbackEl.innerText = '';
+
+            // Render cards in randomized order for each quiz prompt, hiding description if specified
+            renderShuffledAnswerCards(!!q.hideDesc);
+
+            document.getElementById('quiz-modal').classList.remove('hidden');
+        }
+
+        function submitAnswer(selectedCardType) {
+            const q = activeQuestions[currentQuestionIndex];
+            const feedbackEl = document.getElementById('quiz-feedback');
+
+            if (selectedCardType === q.answer) {
+                audio.playCorrect();
+                correctAnswersCount++;
+                feedbackEl.className = 'my-2 p-3 rounded-xl text-center text-sm font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 block';
+                feedbackEl.innerText = `JAWAPAN TEPAT! 💡 ${q.exp}`;
+
+                setTimeout(() => {
+                    document.getElementById('quiz-modal').classList.add('hidden');
+                    currentQuestionIndex++;
+                    questionsAnsweredCount++;
+                    updateScoreUI();
+                    isQuizActive = false;
+
+                    if (questionsAnsweredCount >= 15) {
+                        triggerVictory();
+                    }
+                }, 2200);
+
+            } else {
+                audio.playWrong();
+                lives--;
+                updateLivesUI();
+
+                feedbackEl.className = 'my-2 p-3 rounded-xl text-center text-sm font-bold bg-rose-500/20 text-rose-300 border border-rose-500/50 block';
+                feedbackEl.innerText = `SALAH! Nyawa berkurang 1. ${q.exp}`;
+
+                if (lives <= 0) {
+                    setTimeout(() => {
+                        document.getElementById('quiz-modal').classList.add('hidden');
+                        triggerGameOver();
+                    }, 2500);
+                } else {
+                    setTimeout(() => {
+                        document.getElementById('quiz-modal').classList.add('hidden');
+                        currentQuestionIndex++;
+                        questionsAnsweredCount++;
+                        updateScoreUI();
+                        isQuizActive = false;
+
+                        if (questionsAnsweredCount >= 15) {
+                            triggerVictory();
+                        }
+                    }, 2800);
+                }
+            }
+        }
+
+        function triggerVictory() {
+            isGameRunning = false;
+            document.getElementById('end-icon').innerText = '🏆';
+            document.getElementById('end-title').innerText = 'TAHNIAH! HERO SUCI!';
+            document.getElementById('end-message').innerText = 'Anda berjaya menyucikan semua najis dan menguasai ilmu bersuci dengan sempurna!';
+            document.getElementById('end-score').innerText = `${correctAnswersCount} / 15`;
+            document.getElementById('end-overlay').classList.remove('hidden');
+        }
+
+        function triggerGameOver() {
+            isGameRunning = false;
+            document.getElementById('end-icon').innerText = '💀';
+            document.getElementById('end-title').innerText = 'MISI GAGAL';
+            document.getElementById('end-message').innerText = 'Nyawa anda telah habis. Jangan putus asa, ulang semula untuk memantapkan ilmu!';
+            document.getElementById('end-score').innerText = `${correctAnswersCount} / 15`;
+            document.getElementById('end-overlay').classList.remove('hidden');
+        }
+
+        function startGame() {
+            document.getElementById('start-overlay').classList.add('hidden');
+            document.getElementById('end-overlay').classList.add('hidden');
+            lives = 5;
+            questionsAnsweredCount = 0;
+            correctAnswersCount = 0;
+            monsterKillsCount = 0;
+            currentQuestionIndex = 0;
+            monsters = [];
+            projectiles = [];
+            particles = [];
+
+            // Shuffle the 15 questions array on every start/restart
+            activeQuestions = shuffleArray(INITIAL_SITUATION_QUESTIONS);
+
+            updateLivesUI();
+            updateScoreUI();
+
+            isGameRunning = true;
+            isQuizActive = false;
+        }
+
+        function resetGame() {
+            startGame();
+        }
+
+        window.onload = function () {
+            initCanvas();
+            updateLivesUI();
+            updateScoreUI();
+            document.getElementById('start-btn').addEventListener('click', startGame);
+            gameLoop();
+        };
+    </script>
+</body>
+</html>
+```<FollowUp>
+  <Elicitation label="Ubah bilangan nyawa" query="Bagaimana cara untuk mengubah bilangan nyawa daripada 5 kepada 3 dalam kod wira suci?"/>
+  <Elicitation label="Tambah soalan baharu" query="Bagaimana cara untuk menambah soalan baharu ke dalam senarai soalan?"/>
+</FollowUp>
